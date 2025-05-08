@@ -1,0 +1,90 @@
+# Required Libraries
+import pandas as pd
+import numpy as np	
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import LabelEncoder, StandardScaler
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import classification_report, accuracy_score
+from imblearn.over_sampling import SMOTE
+import joblib
+
+# -------------------------
+# 1. Load and Inspect Data
+# -------------------------
+df = pd.read_csv('customer_churn.csv')  # Replace with your dataset path
+
+# ----------------------------
+# 2. Data Cleaning & Preprocessing
+# ----------------------------
+
+# Convert TotalCharges to numeric (handle blanks)
+df['TotalCharges'] = pd.to_numeric(df['TotalCharges'], errors='coerce')
+df['TotalCharges'].fillna(df['TotalCharges'].median(), inplace=True)
+
+# Drop customerID as it's not predictive
+df.drop('customerID', axis=1, inplace=True)
+
+# Binary Encoding
+binary_cols = ['gender', 'Partner', 'Dependents', 'PhoneService', 'PaperlessBilling', 'Churn']
+le = LabelEncoder()
+for col in binary_cols:
+df[col] = le.fit_transform(df[col])
+
+# One-Hot Encoding for categorical columns
+df = pd.get_dummies(df, columns=['InternetService', 'Contract', 'PaymentMethod', 'MultipleLines'], drop_first=True)
+
+# Feature Scaling
+scaler = StandardScaler()
+df[['tenure', 'MonthlyCharges', 'TotalCharges']] = scaler.fit_transform(df[['tenure', 'MonthlyCharges', 'TotalCharges']])
+
+# -------------------------
+# 3. Train-Test Split
+# -------------------------
+X = df.drop('Churn', axis=1).values  # Using NumPy arrays
+y = df['Churn'].values
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, stratify=y, random_state=42)
+
+# -------------------------
+# 4. Handle Class Imbalance (SMOTE)
+# -------------------------
+sm = SMOTE(random_state=42)
+X_train_res, y_train_res = sm.fit_resample(X_train, y_train)
+
+# -------------------------
+# 5. Model Training
+# -------------------------
+model = RandomForestClassifier(random_state=42)
+model.fit(X_train_res, y_train_res)
+
+# -------------------------
+# 6. Model Evaluation
+# -------------------------
+y_pred = model.predict(X_test)
+print("Accuracy:", accuracy_score(y_test, y_pred))
+print(classification_report(y_test, y_pred))
+
+# -------------------------
+# 7. Save Model
+# -------------------------
+joblib.dump(model, 'churn_model.pkl')
+print("Model saved to churn_model.pkl")
+
+# -------------------------
+# 8. Sample Prediction
+# -------------------------
+# Provide a new customer as a NumPy array
+sample = np.array([[0, 1, 0, 1, 1, -1.2, 0.5, 1.8,  # Scaled tenure, MonthlyCharges, TotalCharges
+                    0, 1, 0,                        # InternetService_Fiber optic, DSL, None
+                    0, 1,                           # Contract_One year, Two year
+                    0, 0, 1]])                      # PaymentMethod categories
+
+# Must match feature order and scaling
+prediction = model.predict(sample)
+print("Sample Prediction:", "Churn" if prediction[0] == 1 else "Not Churn")
+12. Future Scope
+The future scope of customer churn prediction using machine learning is vast and promising. As businesses increasingly rely on data-driven decisions, models can be enhanced with advanced algorithms like ensemble methods and deep learning to improve accuracy. Real-time prediction systems can be developed to identify churn risks instantly, allowing proactive retention strategies. The integration of explainable AI (e.g., SHAP, LIME) will help stakeholders understand the reasoning behind predictions, improving trust and adoption. Enriching features with behavioral, transactional, and external data can uncover deeper insights. Furthermore, seamless deployment into CRM platforms can automate responses, while aligning churn predictions with customer lifetime value (CLV) can optimize ROI. Ensuring fairness, transparency, and data privacy will be crucial as these models scale into production environments.
+
+13. Team Members and Roles
+
+[List the team members who were involved, and clearly define the responsibilities each member undertook. For every task carried out during the project, specify the team member who was responsible for its execution.]
